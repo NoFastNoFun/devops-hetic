@@ -1,0 +1,33 @@
+services:
+  vscode_devops_api:
+    image: rg.fr-par.scw.cloud/devops-code-samples-vscode/vscode_devops:2.0.1
+    command: /bin/bash -c "while sleep 1000; do :; done"
+    working_dir: /home/dev
+    networks:
+      - api-devops-network
+    volumes:
+      - ./:/home/dev:cached
+    labels:
+      api_logging: "true"      
+    
+  dbms:
+    image: mariadb
+    restart: always
+    ports:
+      - "3379:3306"
+    environment: 
+      - MYSQL_ALLOW_EMPTY_PASSWORD=false
+      - MYSQL_ROOT_PASSWORD=rootpassword
+    command: [
+      "--character-set-server=utf8mb4",
+      "--collation-server=utf8mb4_unicode_ci",
+    ]
+    volumes:
+      - ./.data:/var/lib/mysql
+    networks:
+      - api-devops-network
+
+networks:
+  api-devops-network:
+    driver: bridge
+    name: api-devops-network

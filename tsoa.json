@@ -1,0 +1,55 @@
+{
+  "entryFile": "src/server.ts",
+  "noImplicitAdditionalProperties": "throw-on-extras",
+  "controllerPathGlobs": ["src/controllers/**/*Controller.ts"],
+  "spec": {
+    "outputDirectory": "./public",
+    "specVersion": 3,
+    "securityDefinitions": {
+      "jwt": {
+        "type": "apiKey",
+        "name": "jwt",
+        "in": "header",
+        "authorizationUrl": "http://swagger.io/api/oauth/dialog"
+      }
+    },
+    "specMerging": "recursive",
+    "spec": {
+      "paths": {
+        "/user/{userId}/file": {
+          "post": {
+            "requestBody": {
+              "content": {
+                "multipart/form-data": {
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "file": {
+                        "type": "string",
+                        "format": "binary"
+                      }
+                    }
+                  }
+                }
+              }
+            }            
+          }
+        }
+      }
+    }
+  },
+  "routes": {
+    "routesDir": "src/routes",
+    "authenticationModule": "./src/utility/auth/authentication.middleware.ts"
+  },
+  "compilerOptions": {
+    "baseUrl": "src",                                  
+    "paths": {
+      "@model/*": ["model/*"],
+      "@orm/*": ["utility/ORM/*"],      
+      "@error/*": ["utility/error/*"],      
+      "@routes/*": ["routes/*"],
+      "@controllers/*": ["controllers/*"]
+    }
+  }
+}

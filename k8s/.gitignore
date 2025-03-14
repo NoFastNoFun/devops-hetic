@@ -1,0 +1,3 @@
+*.k8s.yaml
+kubeconfig.yaml
+kubeconfig.yml

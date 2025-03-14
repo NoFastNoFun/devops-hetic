@@ -1,0 +1,4 @@
+kubeconfig.yaml
+kubeconfig.model.student.yaml
+*.txt
+tmp

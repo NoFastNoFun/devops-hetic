@@ -1,0 +1,147 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - master
+      - main
+  pull_request:
+    branches:
+      - master
+      - main
+  workflow_dispatch:
+
+jobs:
+  unit-testing:
+    name: Unit Testing
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+      - name: Install dependencies
+        run: npm install
+      - name: Run unit tests
+        run: npm run unit
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v3
+        with:
+          name: unit-test-coverage
+          path: coverage/unit/cobertura-coverage.xml
+
+  integration-testing:
+    name: Integration Testing
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:10
+        env:
+          MYSQL_ROOT_PASSWORD: rootpassword
+          MYSQL_DATABASE: school_test
+        ports:
+          - 3306:3306
+    env:
+      DB_HOST: localhost
+      DB_DATABASE: school_test
+      DB_ROOT_USER: root
+      DB_ROOT_PASSWORD: rootpassword
+      DB_USER: api-test
+      DB_PASSWORD: testpassword
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+      - name: Install dependencies
+        run: npm install
+      - name: Run integration tests
+        run: npm run integration-no-env
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v3
+        with:
+          name: integration-test-coverage
+          path: coverage/integration/cobertura-coverage.xml
+
+  build:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    needs: [unit-testing, integration-testing]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Login to GitHub Container Registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u $GITHUB_ACTOR --password-stdin
+      - name: Build Docker image
+        run: |
+          docker build -t ghcr.io/${{ github.repository }}/api:${{ github.sha }} -f ./config/docker/Dockerfile.prod .
+          docker push ghcr.io/${{ github.repository }}/api:${{ github.sha }}
+
+  e2e-test:
+    name: End-to-End Testing
+    runs-on: ubuntu-latest
+    needs: [build]
+    services:
+      mariadb:
+        image: mariadb:10
+        env:
+          MYSQL_ROOT_PASSWORD: rootpassword
+          MYSQL_DATABASE: school_test
+        ports:
+          - 3306:3306
+      api:
+        image: ghcr.io/${{ github.repository }}/api:${{ github.sha }}
+        env:
+          DB_HOST: mariadb
+          DB_DATABASE: school_test
+          DB_USER: api-test
+          DB_PASSWORD: testpassword
+          PORT: 5150
+        ports:
+          - 5150:5150
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+      - name: Install dependencies
+        run: npm install
+      - name: Run E2E tests
+        run: npm run e2e-no-env
+
+  publish:
+    name: Publish Docker Image
+    runs-on: ubuntu-latest
+    needs: [e2e-test]
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Login to GitHub Container Registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u $GITHUB_ACTOR --password-stdin
+      - name: Build and push Docker image
+        run: |
+          docker build -t ghcr.io/${{ github.repository }}/api:${{ github.sha }} -f ./config/docker/Dockerfile.prod .
+          docker tag ghcr.io/${{ github.repository }}/api:${{ github.sha }} ghcr.io/${{ github.repository }}/api:latest
+          docker push ghcr.io/${{ github.repository }}/api:latest
+
+  deploy:
+    name: Deploy to Kubernetes
+    runs-on: ubuntu-latest
+    needs: [publish]
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: v1.27.5
+      - name: Configure Kubeconfig
+        run: echo "${{ secrets.KUBECONFIG }}" > kubeconfig.yaml
+      - name: Deploy to Kubernetes
+        run: kubectl --kubeconfig=kubeconfig.yaml set image deployment/devopsapi devopsapi=ghcr.io/${{ github.repository }}/api:latest

@@ -1,0 +1,17 @@
+/.data/
+/.data-prod/
+/.cache/
+/.dotnet/
+/.gnupg/
+/.npm/
+/.ssh/
+/.vscode-server/
+/build/
+/node_modules/
+/.gitconfig
+/.mycli-history
+/.mycli.log
+/.myclirc
+/.nyc_output/
+/coverage/
+kubeconfig*.yml

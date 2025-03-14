@@ -1,0 +1,31 @@
+FROM node:20
+
+# Créer l'utilisateur et son groupe, installer des paquets
+RUN apt-get update \        
+    && apt-get install -y sudo \
+    && apt-get install -y less \
+    && apt-get install -y mycli \
+    && apt-get install -y tzdata \    
+    && npm install -g typescript \
+    && npm install -g ts-node \
+    && apt-get install -y apt-transport-https \
+    && apt-get install -y  ca-certificates \
+    && apt-get install -y curl
+
+# Installer kubectl
+RUN \
+  curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg \
+  && echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list \
+  && apt-get update \
+  && apt-get install -y kubectl
+  
+# Fixer le fuseau horaire
+ENV TZ=Europe/Paris
+
+# L'interprète par défaut
+ENV SHELL=/bin/bash
+
+# Le repertoire maison par défaut
+WORKDIR /home/dev
+
+RUN /bin/bash

@@ -1,0 +1,51 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: STUDENT
+  namespace: STUDENT
+subjects:
+  - kind: ServiceAccount
+    name: STUDENT-sa
+    namespace: STUDENT
+roleRef:
+  kind: Role
+  name: STUDENT
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: STUDENT
+  namespace: STUDENT
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "services", "pods/log", "secrets"]
+    verbs: ["create", "get", "update", "list", "watch", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["namespaces", "nodes"]
+    verbs: ["get", "update", "list", "watch", "patch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["create", "get", "update", "list", "delete", "watch", "patch", "delete"]
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["clusterroles", "clusterrolebindings"]
+    verbs: ["create", "get", "list", "watch"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses"]
+    verbs: ["create", "get", "update", "list", "watch", "patch", "delete"]
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: STUDENT-sa
+  namespace: STUDENT
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: STUDENT-quota
+  namespace: STUDENT
+spec:
+  hard:
+    pods: "6"
+
